@@ -1,0 +1,626 @@
+Indicaciones Diarias: Proyecto Backend Persistente con Prisma
+
+
+Clínica Salud Integral
+1. Caso de Negocio e Introducción General
+La Clínica “Salud Integral” ha operado durante años usando hojas de cálculo, lo que ha provocado pérdida de datos y cruce de horarios en la atención médica. La junta directiva te contrató para solucionar la problemática actual: diseñar y desarrollar desde cero una API RESTful que sirva como núcleo para las futuras aplicaciones de recepcionistas, médicos y gerencia.
+
+Módulo de Recepción (Pacientes y Directorio)
+Alta de pacientes: los recepcionistas necesitan registrar a los pacientes nuevos capturando su información personal. El sistema debe rechazar correos mal formateados y fechas de nacimiento irreales (en el futuro).
+Búsqueda de especialistas: cuando un paciente llega buscando atención, el recepcionista debe poder consultar una lista de todos los médicos de la clínica y filtrarlos rápidamente por su especialidad médica.
+Consulta de expedientes: al buscar a un paciente específico, el sistema debe mostrar en una sola vista sus datos personales y el historial completo de todas las citas que ha tenido desde su registro.
+Módulo de Consultorio (Agendamiento y Atención)
+Programación de citas: se debe poder agendar una cita para un paciente con un médico en específico. Regla de negocio: el sistema debe bloquear cualquier intento de agendar una cita en una fecha que ya pasó.
+Agenda del médico: los doctores necesitan abrir su aplicación y ver qué pacientes tienen programados, filtrando por un rango de fechas (desde qué día hasta qué día).
+Gestión de estado: las citas nacen con estado “Programada”. Una vez que el médico atiende al paciente, o si el paciente no llega, el médico debe poder actualizar el estado de esa cita a “Completada” o “Cancelada”.
+Módulo de Gerencia (Análisis de Datos)
+Rentabilidad por área: el director general necesita un reporte que indique el volumen total de citas agendadas, agrupado por cada especialidad médica de la clínica.
+Corte operativo diario: un reporte rápido que, al proporcionarle una fecha específica, devuelva exactamente cuántas citas se completaron y cuántas se cancelaron ese día.
+Objetivo Semanal
+A diferencia de semanas anteriores, aquí tú diseñas la base de datos desde cero — nadie te entrega el modelo de datos ni los endpoints: los defines tú a partir de las necesidades de negocio descritas arriba.
+
+Este proyecto integra todo lo construido en las últimas 4 semanas — TypeScript, Git con Pull Requests, arquitectura MVC, Express, PostgreSQL y validación con Zod — y le suma dos piezas nuevas de esta semana:
+
+Prisma ORM, que aprendes cada mañana en las lecciones de la semana. Cada tarde aplicas directamente en este proyecto lo que viste esa misma mañana: modelado con schema.prisma el lunes, CRUD con Prisma Client el martes, relaciones con include el miércoles, agregaciones con groupBy el viernes.
+Autenticación con JWT, protegiendo las rutas según el rol de quien la consuma (RECEPCIONISTA, MEDICO, GERENCIA). El miércoles recibes un kit de middlewares ya construido — tu trabajo es integrarlo a tu propia arquitectura MVC, no reescribirlo desde cero.
+Al finalizar la semana habrás construido una API que:
+
+Traduce el caso de negocio de la clínica en tablas normalizadas, diseñadas por ti
+Usa Prisma Client para todas las operaciones CRUD, con tipos generados automáticamente a partir del schema
+Protege rutas de escritura y de reportes según el rol del usuario autenticado
+Aplica reglas de negocio reales: fechas de nacimiento no futuras, citas que no pueden agendarse en el pasado
+Responde reportes agregados para gerencia, combinando groupBy y $queryRaw parametrizado cuando la agregación cruza relaciones
+El modelo de datos es tuyo
+A diferencia de semanas anteriores, aquí nadie te entrega las tablas. El lunes levantas tú mismo los requerimientos del caso de negocio y diseñas el modelo relacional — eso es justo lo que esta evaluación mide. La única tabla que se te da resuelta es la de autenticación (users), porque es infraestructura para el kit de JWT que integras el miércoles, no parte del caso de negocio.
+
+Stack Utilizado
+Herramienta	Propósito
+Express + TypeScript	Servidor HTTP tipado
+Prisma ORM	Modelado de datos, migraciones y acceso a PostgreSQL
+PostgreSQL	Motor de base de datos relacional
+Zod	Validación de datos de entrada
+jsonwebtoken + bcryptjs	Emisión de tokens y hash de contraseñas para autenticación
+Swagger UI	Prueba de endpoints HTTP (/api/docs)
+2. Planificación y Entregables Diarios
+Día	Tema
+Lunes	Modelado de Datos y Setup de Prisma
+Martes	CRUD de Pacientes y Médicos con Prisma Client
+Miércoles	Expediente del Paciente y Autenticación con JWT
+Jueves	Módulo de Citas: Agendamiento y Atención
+Viernes	Reportes de Gerencia y Entrega Final
+Cada entregable de lunes a jueves está diseñado para completarse en aproximadamente 7 horas — las otras 3 horas del día las dedicas a las lecciones de Prisma y a resolver dudas del proyecto. El viernes la entrega y demo son en la tarde, así que ese día cuenta con menos tiempo de desarrollo. Si terminas antes, avanza al Reto Extra del viernes.
+Lunes — Levantamiento de Requerimientos y Setup de Prisma
+Temas aplicados
+Abstracción de reglas de negocio · Identificación de Entidades y Atributos · schema.prisma · prisma.config.ts · Driver Adapters · Migraciones (prisma migrate dev) · Prisma Client · Seed data
+
+Tiempo estimado: 7 horas
+
+Entregables del Lunes
+Parte 1 — Levantamiento de Requerimientos (≈ 2 horas)
+Antes de escribir una sola línea de código, relee los tres módulos del caso de negocio de la Clínica “Salud Integral” (Recepción, Consultorio y Gerencia). Tu trabajo hoy es el mismo que hiciste en la Semana 1: convertir una descripción de negocio en entidades, atributos y relaciones — nadie te va a entregar el modelo resuelto.
+
+Crea requerimientos.md en la raíz de tu proyecto y documenta:
+
+Entidades principales que detectas en el texto.
+Atributos de cada entidad, con nombre, tipo de dato aproximado, y notas ([PK], Único, Obligatorio) — usa el mismo formato de tabla que usaste en la Semana 1.
+Relaciones entre entidades, escritas en una frase: “Un X puede tener muchos Y, pero un Y pertenece a un solo X.”
+Dos preguntas que te conviene resolver antes de pasar a la Parte 3:
+
+El texto dice que cada médico tiene una especialidad. ¿Ese dato debería repetirse como texto en cada médico, o merece su propia tabla? Piensa qué pasa si la gerencia quiere listar todas las especialidades que existen, tengan o no médicos asignados todavía — eso es justo lo que evalúa el criterio de “tablas normalizadas”.
+Vas a necesitar una tabla adicional para las cuentas de acceso (autenticación). Esa tabla no aparece en el caso de negocio del cliente porque es un requisito técnico, no de negocio — la vas a recibir ya definida en la Parte 3, no hace falta que la incluyas en tu requerimientos.md.
+Si te ayuda visualizar las relaciones, dibuja el diagrama en dbdiagram.io como en la Semana 1. No es obligatorio, pero sí recomendable antes de escribir el schema de Prisma.
+
+Parte 2 — Setup del proyecto (≈ 1.5 horas)
+Inicializa un proyecto Express + TypeScript igual que en semanas anteriores (pnpm init, express, typescript, tsx o ts-node, @types/node, @types/express). Si prefieres partir del Starter Template que usaste en la Semana 4, también es válido — solo elimina el código de ejemplo de products.
+
+Agrega Prisma y su driver adapter de PostgreSQL — desde la versión 7, esta es la forma en que Prisma recomienda conectar (en vez del motor interno clásico de versiones anteriores):
+
+pnpm add prisma @prisma/client @prisma/adapter-pg pg dotenv
+pnpm add -D @types/pg
+Inicializa Prisma indicando dónde debe generarse el cliente. Desde la v7, el cliente ya no se genera dentro de node_modules — se genera como código TypeScript real, dentro de tu propio proyecto:
+
+pnpm dlx prisma init --output ../generated/prisma
+Esto crea la carpeta prisma/ con schema.prisma, un archivo .env, y prisma.config.ts en la raíz del proyecto — nuevo en Prisma 7. Reemplaza al bloque datasource como la forma en que el CLI (migrate, generate, studio) sabe dónde está tu schema y qué URL de base de datos usar:
+
+import "dotenv/config"
+import { defineConfig, env } from "prisma/config"
+
+export default defineConfig({
+  schema: "prisma/schema.prisma",
+  migrations: {
+    path: "prisma/migrations"
+  },
+  datasource: {
+    url: env("DATABASE_URL")
+  }
+})
+Edita el .env con las credenciales de tu base de datos local:
+
+DATABASE_URL="postgresql://postgres:tu_contraseña@localhost:5432/clinica_salud_integral"
+JWT_SECRET="defínelo-el-miércoles-cuando-integres-auth"
+PORT=3000
+Verifica que .env está en el .gitignore — nunca se sube a Git.
+
+Recurso adicional: Quickstart oficial de Prisma 7 — esta Parte 2 y la Parte 3 siguen ese mismo flujo, adaptado a PostgreSQL local en vez de la base gestionada de Prisma.
+
+Parte 3 — Traducir tu modelo a schema.prisma (≈ 2.5 horas)
+Ahora sí, traduce tu propio requerimientos.md a prisma/schema.prisma. Las entidades del negocio (especialidades, médicos, pacientes, citas — o los nombres que tú hayas elegido) las diseñas tú; diseñar esas tablas es exactamente lo que esta evaluación mide.
+
+El generator y el datasource ya quedaron listos desde el prisma init de la Parte 2 — no los toques:
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+Fíjate que datasource ya no tiene una línea url — esa URL vive ahora en prisma.config.ts, no en el schema.
+
+Lo nuevo hoy es la sintaxis para definir modelos. Este ejemplo, con una entidad que no existe en tu proyecto, te muestra el vocabulario — no la solución:
+
+enum EstadoEjemplo {
+  VALOR_A
+  VALOR_B
+}
+
+model Autor {
+  id     Int     @id @default(autoincrement())
+  nombre String
+  libros Libro[]
+
+  @@map("autores")
+}
+
+model Libro {
+  id      Int    @id @default(autoincrement())
+  titulo  String
+  autor   Autor  @relation(fields: [autorId], references: [id])
+  autorId Int    @map("autor_id")
+
+  @@map("libros")
+}
+@id @default(autoincrement()) — llave primaria autoincremental
+@map("columna") / @@map("tabla") — nombre real en PostgreSQL en snake_case, aunque el campo en Prisma esté en camelCase
+@relation(fields: [...], references: [...]) — cómo se conecta una fila con otra
+enum — restringe un campo a un conjunto fijo de valores, algo más estricto que un String cualquiera
+Tu schema debe cumplir, como mínimo, con lo que ya definiste en tu requerimientos.md, más estos requisitos técnicos:
+
+Toda relación N:1 que identificaste debe existir como tal en Prisma (con su @relation)
+El estado de la cita se restringe con un enum a los tres valores que ya definió el cliente: PROGRAMADA, COMPLETADA, CANCELADA
+Todas las tablas mapeadas a snake_case con @map/@@map
+Además de las entidades que tú definiste, agrega el modelo User — este sí te lo damos completo, porque el miércoles vas a copiar un kit de autenticación ya armado que depende exactamente de estos nombres de campo:
+
+enum Role {
+  RECEPCIONISTA
+  MEDICO
+  GERENCIA
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  password String
+  role         Role
+  
+  # puedes agregar mas campos para adaptar a tu modelo, como nombre, apellido, etc.
+  @@map("users")
+}
+Defínelo hoy para no tener que migrar de nuevo esa tabla a mitad de semana.
+
+Ejecuta la migración:
+
+pnpm prisma migrate dev --name init
+Esto crea las tablas en PostgreSQL y genera el Prisma Client — esta vez como código TypeScript real dentro de generated/prisma/, no como un paquete precompilado en node_modules. Ábrela y échale un vistazo, es código legible.
+
+Parte 4 — Seed de datos y primer endpoint (≈ 1 hora)
+Inserta datos de prueba para no trabajar con tablas vacías toda la semana — al menos 3 especialidades y 2 médicos por especialidad. Puedes hacerlo desde prisma/seed.ts, o directamente desde Prisma Studio:
+
+pnpm prisma studio
+Crea src/config/prisma.ts exportando una única instancia de PrismaClient, conectada a través del driver adapter que instalaste en la Parte 2:
+
+import "dotenv/config"
+import { PrismaPg } from "@prisma/adapter-pg"
+import { PrismaClient } from "../../generated/prisma/client.js"
+
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL as string })
+
+const prisma = new PrismaClient({ adapter })
+
+export default prisma
+El import ya no es desde @prisma/client — apunta a la carpeta que generaste en la Parte 2 (generated/prisma). Ajusta la ruta relativa (../../) según dónde viva este archivo dentro de src/.
+
+Levanta tu servidor Express y agrega un primer endpoint de verificación, usando la entidad de catálogo más simple de tu modelo (probablemente tu tabla de especialidades):
+
+app.get('/api/specialties', async (req, res) => {
+  const data = await prisma.tuModelo.findMany()
+  res.json(data)
+})
+Reemplaza tuModelo y la ruta por los nombres que tú elegiste en tu propio schema.
+
+5. Verificar, publicar y abrir PR
+Confirma que tu endpoint de verificación devuelve los datos que sembraste, y que pnpm prisma studio muestra tus tablas correctamente relacionadas.
+
+git init
+git add .
+git commit -m "feat: modelado inicial y setup de Prisma para clinica-salud-integral"
+git checkout -b feature/modelado-prisma
+git remote add origin <tu-repositorio>
+git push -u origin feature/modelado-prisma
+Abre un Pull Request en GitHub hacia main y espera la revisión antes de hacer el merge.
+Martes — CRUD de Pacientes y Médicos con Prisma Client
+Temas aplicados
+MVC sobre Prisma Client · findMany con where · Validación Zod (email, fechas) · Filtros por relación
+
+Tiempo estimado: 7 horas
+
+Antes de escribir código, asegúrate de tener el PR del lunes mergeado y crea la rama del día:
+
+git checkout main && git pull origin main && git checkout -b feature/pacientes-medicos
+Entregables del Martes
+Parte 1 — Arquitectura MVC sobre Prisma (≈ 1 hora)
+El patrón MVC que usaste en la Semana 4 no cambia — solo cambia qué usa el Modelo para hablar con la base de datos: en vez de pool.query(...), ahora es prisma.tuModelo.findMany(...), usando el nombre que tú le diste a cada entidad en tu schema.prisma del lunes.
+
+Crea las carpetas src/models, src/controllers, src/routes y src/middlewares (si no vienen del setup del lunes). La regla de siempre se mantiene: el Modelo solo sabe hablar con Prisma, el Controlador decide cómo responder, la Ruta solo conecta URL con Controlador.
+
+Parte 2 — Alta y consulta de pacientes (≈ 3 horas)
+Crea src/middlewares/validate-patient.ts con un schema de Zod que exija:
+
+firstName, lastName — string, no vacíos
+email — formato de correo válido
+birthDate — fecha válida que no puede ser futura
+import { z } from 'zod'
+
+export const patientSchema = z.object({
+  firstName: z.string().min(1, 'El nombre es obligatorio'),
+  lastName: z.string().min(1, 'El apellido es obligatorio'),
+  email: z.string().email('El correo no tiene un formato válido'),
+  birthDate: z.coerce.date().max(new Date(), 'La fecha de nacimiento no puede ser futura')
+})
+Los nombres de campo de este ejemplo (firstName, lastName, email, birthDate) son los que yo elegí al escribir el ejemplo — no los que tú necesariamente usaste en tu requerimientos.md del lunes. Usa los tuyos. Lo que se evalúa es que la validación exista y sea correcta, no que el código coincida palabra por palabra con este texto.
+
+En src/models/patient.model.ts, crea las funciones necesarias usando Prisma Client (reemplazando patient por el nombre de tu modelo):
+
+createPatient(data) → prisma.tuModelo.create({ data }) — Prisma devuelve el registro creado automáticamente, no necesitas una consulta adicional
+getAllPatients() → prisma.tuModelo.findMany()
+getPatientById(id) → prisma.tuModelo.findUnique({ where: { id } }) — retorna null si no existe
+Endpoints a implementar:
+
+Método	Ruta	Descripción
+POST	/api/patients	Crea un paciente — validado con validatePatient
+GET	/api/patients	Lista todos los pacientes
+GET	/api/patients/:id	Un paciente por id — 404 si no existe
+El expediente completo con el historial de citas lo construyes mañana, anidando include un nivel más profundo (paciente → citas → médico → especialidad). Hoy en la Parte 3 ya usas include para traer la especialidad de un médico — mañana extiendes la misma idea a una relación uno-a-muchos.
+
+Parte 3 — Directorio de médicos por especialidad (≈ 2 horas)
+Este módulo es de solo lectura — los médicos ya fueron sembrados el lunes, el caso de negocio solo pide consultarlos y filtrarlos.
+
+En src/models/doctor.model.ts (adapta los nombres de modelo y de relación a los que tú definiste el lunes):
+
+export function getAllDoctors(specialtyName?: string) {
+  return prisma.tuModeloMedico.findMany({
+    where: specialtyName
+      ? { tuRelacionEspecialidad: { name: { equals: specialtyName, mode: 'insensitive' } } }
+      : undefined,
+    include: { tuRelacionEspecialidad: true }
+  })
+}
+El include trae los datos de la especialidad junto con cada médico en una sola consulta — sin esto, Prisma solo devolvería la llave foránea (por ejemplo specialtyId), no el nombre de la especialidad.
+
+Endpoint:
+
+Método	Ruta	Descripción
+GET	/api/doctors?specialty=Cardiología	Lista médicos, filtrando por especialidad si se recibe el query string
+En el Controlador, lee req.query.specialty y pásalo al Modelo. Si no viene, retorna todos los médicos.
+
+Parte 4 — Verificar, publicar y abrir PR (≈ 1 hora)
+Prueba en Swagger o Postman:
+
+POST /api/patients con un correo mal formateado → 400
+POST /api/patients con birthDate en el futuro → 400
+POST /api/patients con datos válidos → 201
+GET /api/doctors sin filtro → todos los médicos con su especialidad
+GET /api/doctors?specialty=Pediatría → solo los médicos de esa especialidad
+git add .
+git commit -m "feat: CRUD de pacientes y directorio de médicos con Prisma"
+git push -u origin feature/pacientes-medicos
+Abre un Pull Request en GitHub hacia main y espera la revisión antes de hacer el merge.
+Miércoles — Expediente del Paciente y Autenticación con JWT
+Temas aplicados
+include en Prisma (relaciones anidadas) · JWT · bcrypt · Middlewares de autenticación y autorización por rol
+
+Tiempo estimado: 7 horas
+
+Antes de escribir código, asegúrate de tener el PR del martes mergeado y crea la rama del día:
+
+git checkout main && git pull origin main && git checkout -b feature/expediente-auth
+Parte 1 — Expediente completo del paciente (≈ 2 horas)
+El caso de negocio pide que, al consultar a un paciente, se vea en una sola vista sus datos personales y el historial completo de sus citas. Ayer usaste include para traer la especialidad de un médico en un solo nivel; hoy extiendes la misma idea a una relación uno-a-muchos anidada dos niveles: paciente → citas → médico → especialidad, en un solo viaje a la base de datos.
+
+Actualiza getPatientById en src/models/patient.model.ts:
+
+export function getPatientById(id: number) {
+  return prisma.patient.findUnique({
+    where: { id },
+    include: {
+      appointments: {
+        include: { doctor: { include: { specialty: true } } },
+        orderBy: { scheduledAt: 'desc' }
+      }
+    }
+  })
+}
+Verifica en Swagger que GET /api/patients/:id ahora devuelve el paciente con un arreglo appointments, cada uno con los datos del médico y su especialidad. Si el paciente aún no tiene citas, el arreglo debe llegar vacío — no null ni un error.
+
+Parte 2 — Kit de autenticación (≈ 4 horas)
+Hasta ahora cualquiera puede llamar a tus endpoints. A partir de hoy, cada rol (RECEPCIONISTA, MEDICO, GERENCIA) solo puede acceder a lo que le corresponde según el caso de negocio.
+
+No vas a construir JWT ni el hashing de contraseñas desde cero — abajo tienes el kit completo, ya armado y listo para copiar. Tu trabajo es integrarlo a la arquitectura MVC que ya construiste, igual que harías en un trabajo real al incorporar una librería de autenticación a un proyecto existente.
+
+Antes de copiar el código, mira este video explicando el flujo completo: login → emisión del token → el cliente lo envía en Authorization: Bearer <token> → el middleware lo verifica → el controlador ya sabe quién hace la petición y con qué rol.
+
+
+1. Instalar dependencias#
+pnpm add jsonwebtoken bcryptjs
+pnpm add -D @types/jsonwebtoken @types/bcryptjs
+Define JWT_SECRET en tu .env con un valor real (cualquier cadena larga y aleatoria sirve para desarrollo).
+
+2. Middleware de autenticación — src/middlewares/auth.middleware.ts#
+import { Request, Response, NextFunction } from 'express'
+import jwt from 'jsonwebtoken'
+
+export interface AuthPayload {
+  id: number
+  email: string
+  role: 'RECEPCIONISTA' | 'MEDICO' | 'GERENCIA'
+}
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: AuthPayload
+    }
+  }
+}
+
+export function verifyToken(req: Request, res: Response, next: NextFunction) {
+  const header = req.headers.authorization
+
+  if (!header || !header.startsWith('Bearer ')) {
+    return res.status(401).json({ message: 'Token no proporcionado' })
+  }
+
+  const token = header.split(' ')[1]
+
+  try {
+    req.user = jwt.verify(token, process.env.JWT_SECRET as string) as AuthPayload
+    next()
+  } catch {
+    return res.status(401).json({ message: 'Token inválido o expirado' })
+  }
+}
+3. Middleware de autorización por rol — src/middlewares/authorize.middleware.ts#
+import { Request, Response, NextFunction } from 'express'
+import { AuthPayload } from './auth.middleware.js'
+
+export function authorize(...roles: AuthPayload['role'][]) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!req.user || !roles.includes(req.user.role)) {
+      return res.status(403).json({ message: 'No tienes permiso para acceder a este recurso' })
+    }
+    next()
+  }
+}
+4. Controlador de autenticación — src/controllers/auth.controller.ts#
+import { Request, Response } from 'express'
+import bcrypt from 'bcryptjs'
+import jwt from 'jsonwebtoken'
+import prisma from '../config/prisma.js'
+
+export async function register(req: Request, res: Response) {
+  try {
+    const { email, password, role } = req.body
+    const hashedPassword = await bcrypt.hash(password, 10)
+
+    const user = await prisma.user.create({
+      data: { email, password: hashedPassword, role },
+      select: { id: true, email: true, role: true }
+    })
+
+    res.status(201).json(user)
+  } catch {
+    res.status(500).json({ message: 'Error al registrar el usuario' })
+  }
+}
+
+export async function login(req: Request, res: Response) {
+  try {
+    const { email, password } = req.body
+    const user = await prisma.user.findUnique({ where: { email } })
+
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      return res.status(401).json({ message: 'Credenciales inválidas' })
+    }
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role },
+      process.env.JWT_SECRET as string,
+      { expiresIn: '8h' }
+    )
+
+    res.json({ token })
+  } catch {
+    res.status(500).json({ message: 'Error al iniciar sesión' })
+  }
+}
+5. Rutas de autenticación — src/routes/auth.routes.ts#
+import { Router } from 'express'
+import { register, login } from '../controllers/auth.controller.js'
+
+const router = Router()
+
+router.post('/register', register)
+router.post('/login', login)
+
+export default router
+Móntalas en index.ts bajo /api/auth.
+
+6. Proteger las rutas que ya construiste#
+Aplica verifyToken y authorize(...) como middlewares intermedios, igual que hiciste con validatePatient la semana pasada. Este es el patrón — es un solo ejemplo, no una lista para copiar tal cual:
+
+router.post('/patients', verifyToken, authorize('RECEPCIONISTA'), validatePatient, createPatient)
+Express ejecuta los middlewares en orden: primero confirma que hay una sesión válida (verifyToken), luego que el rol tiene permiso (authorize), y solo entonces llega a la validación de datos y al controlador. authorize acepta varios roles separados por coma cuando más de uno debe tener acceso a la misma ruta.
+
+Repite el patrón en el resto de tus rutas de pacientes y médicos. El brief agrupa ambas bajo el mismo “Módulo de Recepción” — alta de pacientes, búsqueda de médicos y consulta de expedientes las hace el recepcionista — así que authorize('RECEPCIONISTA') cubre todas las rutas que construiste el lunes y el martes. MEDICO y GERENCIA los vas a usar recién el jueves y el viernes, en las rutas nuevas de esos días.
+
+7. Documentar la seguridad en Swagger#
+Las rutas protegidas ahora exigen un header Authorization que Swagger UI todavía no conoce — sin esto, el botón “Try it out” de /api/docs no tiene forma de enviar el token. El video de arriba muestra cómo configurar el security scheme en swagger-autogen, anotar las rutas protegidas y usar el botón “Authorize” en /api/docs.
+
+Recurso adicional: Bearer Auth — swagger-autogen
+
+Parte 3 — Verificar y hacer Pull Request (≈ 1 hora)
+Prueba el flujo completo en Swagger o Postman:
+
+POST /api/auth/register con { "email": "recepcion@clinica.com", "password": "123456", "role": "RECEPCIONISTA" } → 201
+POST /api/auth/login con las mismas credenciales → 200 con un token
+GET /api/patients sin header Authorization → 401
+GET /api/patients con Authorization: Bearer <token> de un usuario RECEPCIONISTA → 200
+Registra un usuario con rol MEDICO e intenta el mismo GET /api/patients → 403
+git add .
+git commit -m "feat: expediente con historial de citas y autenticación con JWT"
+git push -u origin feature/expediente-auth
+Abre un Pull Request en GitHub hacia main y espera la revisión antes de hacer el merge.
+
+
+Jueves — Módulo de Citas: Agendamiento y Atención
+Temas aplicados
+Reglas de negocio con Zod (refine) · Relaciones N:1 con Prisma · Filtros por rango de fechas · PATCH para actualizaciones parciales
+
+Tiempo estimado: 7 horas
+
+Antes de escribir código, asegúrate de tener el PR del miércoles mergeado y crea la rama del día:
+
+git checkout main && git pull origin main && git checkout -b feature/citas
+Entregables del Jueves
+Parte 1 — Agendar una cita (≈ 2 horas)
+La regla de negocio es explícita: no se puede agendar una cita en una fecha que ya pasó. Crea src/middlewares/validate-appointment.ts:
+
+import { z } from 'zod'
+
+export const appointmentSchema = z.object({
+  patientId: z.number().int().positive(),
+  doctorId: z.number().int().positive(),
+  scheduledAt: z.coerce.date().min(new Date(), 'No puedes agendar una cita en una fecha que ya pasó'),
+  reason: z.string().optional()
+})
+Los nombres de campo (patientId, doctorId, scheduledAt) corresponden al ejemplo — usa los que tú definiste en tu propio schema.prisma el lunes. Lo mismo aplica al resto del código de hoy: donde veas prisma.tuModeloCita, reemplázalo por el nombre real de tu modelo de citas.
+
+En src/models/appointment.model.ts, crea createAppointment(data) usando prisma.tuModeloCita.create({ data }). El estado nace en PROGRAMADA por el @default que definiste el lunes — no lo recibas del body.
+
+Antes de crear la cita, confirma en el Controlador que el paciente y el médico existen (usa los modelos de martes); si alguno no existe, responde 404 en vez de dejar que Prisma lance un error de llave foránea.
+
+Endpoint:
+
+Método	Ruta	Descripción
+POST	/api/appointments	Agenda una cita
+A diferencia de la agenda del médico y el cambio de estado (Partes 2 y 3), el brief no dice explícitamente quién agenda la cita — “Programación de citas” aparece sin actor asignado. Decide tú qué rol o roles tienen sentido según cómo interpretes el flujo de la clínica, y protege la ruta con authorize(...) en consecuencia.
+
+Parte 2 — Agenda del médico por rango de fechas (≈ 2 horas)
+Los médicos necesitan ver qué pacientes tienen programados entre dos fechas. Agrega a appointment.model.ts:
+
+export function getDoctorAgenda(doctorId: number, from?: Date, to?: Date) {
+  return prisma.tuModeloCita.findMany({
+    where: {
+      doctorId,
+      ...(from && to ? { scheduledAt: { gte: from, lte: to } } : {})
+    },
+    include: { tuRelacionPaciente: true },
+    orderBy: { scheduledAt: 'asc' }
+  })
+}
+Endpoint:
+
+Método	Ruta	Descripción
+GET	/api/doctors/:id/appointments?from=&to=	Agenda del médico, filtrable por rango de fechas — protegido con authorize('MEDICO')
+En el Controlador, lee from y to de req.query, conviértelos a Date con new Date(...) solo si ambos llegan, y pásalos al Modelo. Si no llegan, retorna la agenda completa del médico.
+
+Parte 3 — Actualizar el estado de una cita (≈ 2 horas)
+Una cita nace PROGRAMADA. El médico la actualiza a COMPLETADA (la atendió) o CANCELADA (el paciente no llegó). Esto es una actualización parcial de un único campo — el verbo correcto es PATCH, no PUT.
+
+Agrega el schema de validación:
+
+export const appointmentStatusSchema = z.object({
+  status: z.enum(['COMPLETADA', 'CANCELADA'])
+})
+En el Modelo:
+
+export function updateAppointmentStatus(id: number, status: 'COMPLETADA' | 'CANCELADA') {
+  return prisma.tuModeloCita.update({
+    where: { id },
+    data: { status }
+  })
+}
+Si el id no existe, Prisma lanza una excepción (P2025) — captúrala en el Controlador con try/catch y responde 404 en ese caso, en vez de dejar que se propague como 500.
+
+Endpoint:
+
+Método	Ruta	Descripción
+PATCH	/api/appointments/:id/status	Cambia el estado de una cita — protegido con authorize('MEDICO')
+Parte 4 — Verificar, publicar y abrir PR (≈ 1 hora)
+Prueba en Swagger o Postman, autenticado con el rol correcto en cada caso:
+
+POST /api/appointments con una fecha pasada → 400
+POST /api/appointments con un doctorId inexistente → 404
+POST /api/appointments con datos válidos → 201, estado PROGRAMADA
+GET /api/doctors/:id/appointments?from=2026-07-13&to=2026-07-20 → solo las citas de ese rango
+PATCH /api/appointments/:id/status con { "status": "COMPLETADA" } → 200
+PATCH /api/appointments/:id/status con un id inexistente → 404
+Copiar
+git add .
+git commit -m "feat: agendamiento de citas, agenda del médico y cambio de estado"
+git push -u origin feature/citas
+Abre un Pull Request en GitHub hacia main y espera la revisión antes de hacer el merge.
+Viernes — Reportes de Gerencia y Entrega Final
+Temas aplicados
+groupBy y agregaciones en Prisma · $queryRaw con tagged templates · Documentación con Swagger
+
+Tiempo estimado: 4 horas — hoy la entrega y la demo son en la tarde, así que tienes menos tiempo de desarrollo que el resto de la semana.
+
+Antes de escribir código, asegúrate de tener el PR del jueves mergeado y crea la rama del día:
+
+git checkout main && git pull origin main && git checkout -b feature/reportes
+Parte 1 — Rentabilidad por especialidad (≈ 1.5 horas)
+Gerencia necesita el volumen de citas agendadas, agrupado por especialidad médica. El problema: specialty no está directamente en appointments, sino a dos relaciones de distancia (appointment → doctor → specialty). El groupBy de Prisma Client agrupa por columnas de un solo modelo, no a través de relaciones anidadas — así que este reporte es el caso indicado para usar $queryRaw con tagged templates, que siguen siendo parametrizados de forma segura aunque el SQL sea explícito:
+
+export function getAppointmentsBySpecialty() {
+  return prisma.$queryRaw`
+    SELECT s.name AS specialty, COUNT(a.id)::int AS total_appointments
+    FROM appointments a
+    INNER JOIN doctors d ON d.id = a.doctor_id
+    INNER JOIN specialties s ON s.id = d.specialty_id
+    GROUP BY s.name
+    ORDER BY total_appointments DESC
+  `
+}
+Los nombres de tabla y columna (appointments, doctor_id, specialty_id, s.name) son los del ejemplo — reemplázalos por los que tú definiste con @map/@@map el lunes. Si no los recuerdas, revísalos en pgAdmin o con \d nombre_tabla en psql.
+
+Aunque aquí no hay valores dinámicos, si más adelante agregas un filtro (por ejemplo, un rango de fechas), interpólalo directamente en el template — Prisma lo parametriza automáticamente, nunca concatenes el string a mano:
+
+prisma.$queryRaw`... WHERE a.scheduled_at >= ${from} ...`
+Endpoint:
+
+Método	Ruta	Descripción
+GET	/api/reports/appointments-by-specialty	Total de citas agrupadas por especialidad — protegido con authorize('GERENCIA')
+Parte 2 — Corte operativo diario (≈ 1 hora)
+Este reporte no cruza relaciones — agrupa appointments por su propia columna status dentro de un día específico. Es el caso típico de groupBy nativo de Prisma:
+
+export async function getDailyCutoff(date: string) {
+  const startOfDay = new Date(`${date}T00:00:00`)
+  const endOfDay = new Date(`${date}T23:59:59`)
+
+  return prisma.tuModeloCita.groupBy({
+    by: ['status'],
+    where: {
+      scheduledAt: { gte: startOfDay, lte: endOfDay },
+      status: { in: ['COMPLETADA', 'CANCELADA'] }
+    },
+    _count: { status: true }
+  })
+}
+Endpoint:
+
+Método	Ruta	Descripción
+GET	/api/reports/daily-cutoff?date=2026-07-16	Cuántas citas se completaron y cancelaron ese día — protegido con authorize('GERENCIA')
+Valida date con Zod en la ruta (z.string().date() o un regex YYYY-MM-DD) antes de construir las fechas.
+
+Parte 3 — Documentación, pulido y entrega (≈ 1.5 horas)
+Agrega los comentarios de swagger-autogen a cada controlador nuevo de la semana para que aparezcan en /api/docs.
+Revisa que ningún archivo use any. Para los datos que salen de Prisma no necesitas escribir interfaces a mano — impórtalas generadas desde tu cliente de Prisma (la carpeta generated/prisma que configuraste el lunes) usando el nombre real de tus modelos — por ejemplo, si tu modelo de citas se llama Cita, sería import { Cita } from '../../generated/prisma/client.js'.
+Confirma que todas las rutas de escritura y de reportes tienen verifyToken y el authorize(...) correcto según el rol.
+Prueba una vez más el flujo completo: registro → login → crear paciente → agendar cita → actualizar estado → ambos reportes.
+git add .
+git commit -m "feat: reportes de gerencia y documentación final"
+git push -u origin feature/reportes
+Abre el Pull Request final de la semana en GitHub hacia main. Una vez aprobado, haz el merge antes de la entrega de la tarde.
+
+Entrega final
+Carpeta / Archivo	Contenido
+prisma/schema.prisma	Modelo de datos completo: tus entidades del negocio (especialidades, médicos, pacientes, citas) + User
+src/config/prisma.ts	Instancia de PrismaClient con el driver adapter de PostgreSQL
+src/models/*.model.ts	Acceso a datos con Prisma Client por entidad
+src/controllers/*.controller.ts	Lógica de request/response por entidad
+src/middlewares/validate-*.ts	Validaciones Zod (paciente, cita, estado de cita)
+src/middlewares/auth.middleware.ts	Verificación de JWT
+src/middlewares/authorize.middleware.ts	Autorización por rol
+src/routes/*.routes.ts	Rutas montadas bajo /api
+.env	Variables de entorno, incluyendo JWT_SECRET (no subir a Git)
+Reto Extra — Un médico solo ve sus propias citas
+Hoy protegiste /api/doctors/:id/appointments para que solo entren usuarios con rol MEDICO — pero cualquier médico autenticado puede consultar la agenda de cualquier otro médico con solo cambiar el :id en la URL. Eso no es autorización real, es solo verificar el rol.
+
+Investiga y resuelve:
+
+Agrega una relación opcional entre User y Doctor en tu schema (doctorId Int? en User, o el enfoque que prefieras) para saber a qué médico corresponde cada cuenta.
+En el Controlador de getDoctorAgenda, compara el :id de la URL contra req.user. Si un usuario con rol MEDICO intenta consultar la agenda de otro médico, responde 403 Forbidden — aunque su rol sea correcto, el recurso no le pertenece.
+Aplica la misma lógica de “ownership” al endpoint de cambio de estado (PATCH /api/appointments/:id/status): un médico solo debería poder actualizar citas que son suyas.
+Esta es la diferencia entre autenticación (¿quién eres?), autorización por rol (¿qué tipo de usuario eres?) y autorización por pertenencia (¿es tuyo este recurso específico?). Las tres capas conviven en la mayoría de APIs reales.

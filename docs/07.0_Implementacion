@@ -4,35 +4,34 @@
 
 Documentar el proceso de implementación de Clínica Salud Integral, desde la preparación de la base de datos hasta las pruebas y entrega del proyecto.
 
-Este documento funcionará como una bitácora técnica y progresiva. En cada fase se registrarán las actividades realizadas, las decisiones técnicas, los archivos creados o modificados, los comandos ejecutados y las verificaciones efectuadas.
+Este documento funcionará como una bitácora técnica y progresiva. En cada etapa se registrarán las actividades realizadas, las decisiones técnicas, los archivos creados o modificados, los comandos ejecutados y las verificaciones efectuadas.
 
 La documentación distinguirá entre:
 
-- **Implementado:** funcionalidad desarrollada.
+- **Implementado:** funcionalidad desarrollada total o parcialmente; se indicará el alcance concreto.
 - **Verificado:** funcionalidad comprobada mediante comandos o pruebas.
-- **Pendiente:** actividad todavía no realizada o que requiere comprobación.
+- **Pendiente:** actividad todavía no realizada. Una actividad implementada pero sin comprobación se marcará como implementada y pendiente de verificación.
 
 ## 2. Organización de la implementación
 
-### Fase 1. Crear la base de datos
+### Etapa 1. Configuración base
 
-**Objetivo:** construir la estructura de datos de Clínica Salud Integral mediante Prisma y PostgreSQL.
+**Objetivo:** preparar el entorno de ejecución, los scripts y la validación de variables de entorno.
+
+**Estado de la plantilla:** ya existen `package.json`, `tsconfig.json`, `tsconfig.build.json`, `.gitignore`, `.env.example`, `src/config/env.schema.ts` y `src/config/env.ts`. `env.schema.ts` valida `DATABASE_URL` como URL, `JWT_SECRET` como cadena obligatoria de longitud mínima de un carácter, `NODE_ENV` como enum `development`, `test` o `production` con valor predeterminado `development`, y `PORT` como entero positivo con valor predeterminado `3000`. Los scripts `dev`, `build`, `start`, `typecheck` y `prisma:generate` están declarados. La presencia de estos archivos y scripts no significa que se hayan ejecutado o verificado.
 
 Alcance:
 
-- Definición de modelos.
-- Definición de atributos y tipos de datos.
-- Relaciones entre modelos.
-- Enumeraciones.
-- Restricciones y claves únicas.
-- Modelos Prisma singulares: `Patient`, `Doctor`, `Specialty`, `Appointment` y `User`.
-- Tablas PostgreSQL plurales: `patients`, `doctors`, `specialties`, `appointments` y `users`, mediante `@@map`.
-- Convenciones de nombres de campos SQL mediante `@map`.
-- Configuración del esquema.
-- Generación de Prisma Client.
-- Creación y aplicación de la primera migración.
-- Implementación y ejecución del seed de especialidades y médicos.
-- Verificación de que el seed sea idempotente.
+- Revisar las dependencias existentes sin agregar todavía dependencias de autenticación ni pruebas.
+- Validar URLs, `JWT_SECRET` obligatorio, puerto positivo y `NODE_ENV`.
+- Confirmar los scripts `dev`, `build`, `start`, `typecheck` y `prisma:generate`.
+- Confirmar que `.env` se ignore y `.env.example` no contenga secretos reales.
+
+**Comprobación ya ejecutada:** `pnpm exec tsc --noEmit` terminó sin errores de TypeScript. Este comando no equivale a `pnpm typecheck`.
+
+**Comprobaciones pendientes:** ejecutar `pnpm install` y `pnpm typecheck`; confirmar que `.env` se ignore y que `.env.example` no contenga secretos reales; comprobar el arranque de la aplicación y la validación en ejecución de las variables obligatorias y sus valores predeterminados. No se ha confirmado que estas comprobaciones se hayan realizado.
+
+La comprobación de TypeScript ya ejecutada no acredita por sí sola el arranque de la aplicación ni las validaciones de entorno en ejecución, y no completa la etapa 1.
 
 **Registro de implementación**
 
@@ -46,18 +45,24 @@ Alcance:
 - Decisiones técnicas:
 - Pendientes:
 
-### Fase 2. Inicio de la aplicación
+### Etapa 2. Modelado, migración y seed
 
-**Objetivo:** establecer la base ejecutable de la API sobre la base de datos ya modelada y sembrada.
+**Objetivo:** construir y poblar la estructura de datos acordada mediante Prisma y PostgreSQL.
+
+**Depende de:** etapa 1 y PostgreSQL disponible.
+
+**Estado de la plantilla:** `prisma/schema.prisma` contiene el generador y el datasource, pero todavía no define los cinco modelos, enums, relaciones ni restricciones. `prisma7.config.ts` y `src/config/prisma.ts` existen como base. El directorio `prisma/migrations/` ya existe como estructura, pero la migración inicial todavía está pendiente. También siguen pendientes la generación del cliente y el seed.
 
 Alcance:
 
-- Configuración del servidor Express.
-- Configuración de variables de entorno.
-- Conexión con PostgreSQL mediante Prisma.
-- Estructura de rutas, controladores, servicios y middlewares.
-- Endpoint de salud.
-- Configuración inicial de Swagger/OpenAPI y manejo global de errores.
+- Definir `Patient`, `Doctor`, `Specialty`, `Appointment` y `User`, con sus atributos, tipos, relaciones, enums y restricciones acordados.
+- Mapear los modelos a las tablas plurales y los atributos camelCase pertinentes a columnas SQL `snake_case`.
+- Generar Prisma Client con salida `generated/prisma` y conectar PostgreSQL mediante `PrismaPg`.
+- Crear y aplicar la migración inicial.
+- Implementar el seed de tres especialidades y seis médicos, sin sobrescribir registros existentes.
+- Verificar que el seed sea idempotente.
+
+**Comprobaciones para continuar:** `pnpm prisma validate`, `pnpm prisma generate`, migración aplicada, seed ejecutado dos veces sin duplicados y relaciones visibles en Prisma Studio.
 
 **Registro de implementación**
 
@@ -71,20 +76,23 @@ Alcance:
 - Decisiones técnicas:
 - Pendientes:
 
-### Fase 3. Alta inicial de GERENCIA
+### Etapa 3. Servidor, rutas base y errores
 
-**Objetivo:** crear por terminal la primera cuenta GERENCIA antes de habilitar el registro de otras cuentas mediante la API.
+**Objetivo:** completar la base ejecutable de Express, la documentación OpenAPI y el manejo global de errores.
+
+**Depende de:** etapa 2.
+
+**Estado de la plantilla:** `src/app.ts` y `src/server.ts` ya existen. El código monta JSON, CORS, `GET /health` y Swagger UI con una especificación mínima; la conexión Prisma está definida en `src/config/prisma.ts`. El middleware global de errores, el ciclo de vida de Prisma y la especificación completa de las 13 operaciones están pendientes. Estas observaciones describen los archivos existentes; todavía no acreditan una comprobación de ejecución.
+
+**Verificación pendiente:** no consta que el servidor se haya iniciado ni que `GET /health` haya respondido 200 o que `/api/docs` se haya comprobado en ejecución.
 
 Alcance:
 
-- Implementación del comando de creación inicial desde terminal.
-- Captura oculta y validación de credenciales.
-- Normalización del correo y almacenamiento de contraseña con bcryptjs.
-- Vinculación con el modelo Prisma `User` y la tabla física `users`.
-- Salida sin cambios cuando ya existe una cuenta GERENCIA.
-- Verificación de la cuenta creada antes de continuar.
+- Completar el registro de middlewares y el manejo global de errores.
+- Conectar y gestionar Prisma desde el arranque del servidor.
+- Mantener `GET /health` y completar OpenAPI para las 13 operaciones, sin añadir rutas.
 
-Esta fase no implementa los endpoints `register` ni `login`. El comando inicial crea GERENCIA directamente mediante Prisma; así, las fases posteriores pueden desarrollar y comprobar la autenticación con una cuenta existente.
+**Comprobación para continuar:** iniciar la API, confirmar que `GET /health` devuelve 200 y comprobar que `/api/docs` carga el OpenAPI.
 
 **Registro de implementación**
 
@@ -98,26 +106,26 @@ Esta fase no implementa los endpoints `register` ni `login`. El comando inicial 
 - Decisiones técnicas:
 - Pendientes:
 
-### Fase 4. Registro e inicio de sesión
+### Etapa 4. Schemas y acceso a datos
 
-**Objetivo:** implementar la autenticación y autorización de la API después de crear la cuenta inicial GERENCIA.
+**Objetivo:** definir la validación de solicitudes y el acceso a datos Prisma que utilizarán los módulos funcionales.
+
+**Depende de:** etapas 2–3.
 
 Alcance:
 
-- Registro de usuarios permitido únicamente a GERENCIA.
-- Inicio de sesión con correo normalizado y contraseña.
-- Hash y verificación de contraseñas mediante bcryptjs.
-- Emisión y validación de JWT con duración de una hora.
-- Middleware de autenticación y control de permisos por roles.
-- Vinculación obligatoria de cuentas MEDICO con un `Doctor` existente.
-- Rechazo del rol GERENCIA en el endpoint de registro.
+- Crear schemas Zod para body, parámetros de ruta y query; responder 400 ante entradas inválidas.
+- Crear los models de aplicación para `User`, `Patient`, `Doctor`, `Specialty`, `Appointment` y reportes.
+- Mantener las consultas Prisma en los models; usar `include`/`select` para relaciones y SQL estático con `$queryRaw` para la agregación entre relaciones.
+- No crear schema para especialidades, que no recibe datos ni parámetros.
+
+**Comprobación para continuar:** generar el cliente con el schema final y realizar consultas básicas de lectura/escritura con datos seed, sin ejecutar todavía la batería formal.
 
 **Registro de implementación**
 
 - Qué hicimos:
 - Cómo lo hicimos:
 - Archivos creados o modificados:
-- Endpoints implementados:
 - Comandos ejecutados:
 - Verificaciones realizadas:
 - Resultado:
@@ -125,48 +133,24 @@ Alcance:
 - Decisiones técnicas:
 - Pendientes:
 
-### Fase 5. Funciones principales
+### Etapa 5. Autenticación y autorización
 
-**Objetivo:** implementar las operaciones principales relacionadas con pacientes, médicos y especialidades.
+**Objetivo:** crear la cuenta inicial GERENCIA y habilitar registro, inicio de sesión y controles de acceso por rol.
 
-Alcance:
-
-- Registro de pacientes.
-- Listado de pacientes.
-- Consulta del expediente e historial de citas mediante una sola ruta: `GET /api/patients/:id`.
-- Listado de médicos.
-- Consulta de especialidades.
-- Acceso del médico a pacientes con citas compartidas.
-- Aplicación de permisos y restricciones de acceso.
-
-**Registro de implementación**
-
-- Qué hicimos:
-- Cómo lo hicimos:
-- Archivos creados o modificados:
-- Endpoints implementados:
-- Comandos ejecutados:
-- Verificaciones realizadas:
-- Resultado:
-- Problemas encontrados y soluciones:
-- Decisiones técnicas:
-- Pendientes:
-
-### Fase 6. Citas y reportes
-
-**Objetivo:** implementar la gestión de citas médicas y las operaciones de consulta estadística.
+**Depende de:** etapas 1–4 y modelos de usuario/médico.
 
 Alcance:
 
-- Registro de citas.
-- Consulta de agenda médica.
-- Validación de fechas y horarios.
-- Prevención de citas simultáneas para un mismo médico o paciente.
-- Actualización del estado de las citas.
-- Aplicación de las transiciones de estado permitidas.
-- Reporte de citas por especialidad.
-- Reporte de corte diario.
-- Aplicación de las reglas de negocio correspondientes.
+- Agregar `jsonwebtoken`, `@types/jsonwebtoken` y `bcryptjs`.
+- Implementar primero `prisma/create-initial-manager.ts`, con captura oculta, correo normalizado, hash bcryptjs con factor 10 y salida sin cambios si ya existe GERENCIA.
+- Implementar `POST /api/auth/login` con JWT de una hora y `POST /api/auth/register`, accesible solo a GERENCIA y limitado a RECEPCIONISTA/MEDICO.
+- Exigir un `Doctor` existente y sin cuenta para registrar MEDICO, y crear/vincular los registros dentro de una transacción.
+- Implementar autenticación JWT y autorización por roles; nunca permitir crear GERENCIA por el endpoint de registro.
+- Documentar la seguridad en OpenAPI.
+
+La cuenta GERENCIA se crea mediante `pnpm exec tsx prisma/create-initial-manager.ts` antes de probar los endpoints de autenticación.
+
+**Comprobación para continuar:** crear GERENCIA por terminal; confirmar que login devuelve un token de una hora y que una ruta protegida rechaza solicitudes anónimas y roles no autorizados.
 
 **Registro de implementación**
 
@@ -181,13 +165,44 @@ Alcance:
 - Decisiones técnicas:
 - Pendientes:
 
-### Fase 7. Pruebas y entrega
+### Etapa 6. Operaciones funcionales
+
+**Objetivo:** implementar los endpoints de pacientes, directorio, consultas médicas, citas y reportes conforme a sus contratos.
+
+**Depende de:** etapas 1–5.
+
+Alcance y orden:
+
+- **Pacientes:** alta, listado ordenado por `id` y expediente con historial, médico y especialidad.
+- **Directorio:** médicos filtrables por `specialtyId`, catálogo de especialidades y orden definido.
+- **Consultas del médico:** datos básicos y citas compartidas; no exponer correo ni citas de otros médicos.
+- **Citas:** alta con referencias existentes, restricción de coincidencia exacta, agenda UTC `[from, to)` y transición de estado con control de propiedad.
+- **Reportes:** total histórico por especialidad y corte diario UTC con ambos conteos, incluso si son cero.
+- En cada operación, crear o completar schema, model, service, controller y route según corresponda; aplicar roles y registrar la ruta en `app.ts` y OpenAPI.
+
+**Comprobación para continuar:** cada endpoint responde según su contrato, valida las entradas y aplica los roles y controles de propiedad correspondientes. No ejecutar aún pruebas unitarias o de integración formales.
+
+**Registro de implementación**
+
+- Qué hicimos:
+- Cómo lo hicimos:
+- Archivos creados o modificados:
+- Endpoints implementados:
+- Comandos ejecutados:
+- Verificaciones realizadas:
+- Resultado:
+- Problemas encontrados y soluciones:
+- Decisiones técnicas:
+- Pendientes:
+
+### Etapa 7. Pruebas finales y entrega
 
 **Objetivo:** verificar el funcionamiento integral de la API y documentar su estado final.
 
 Alcance:
 
 - Pruebas de endpoints mediante Postman.
+- Agregar `vitest`, `supertest`, `@types/supertest` y los scripts `test` y `test:integration`.
 - Pruebas automatizadas con Vitest y Supertest.
 - Verificación de autenticación y autorización.
 - Verificación de validaciones.
@@ -211,22 +226,22 @@ Alcance:
 - Incidencias y soluciones:
 - Requisitos verificados:
 - Pendientes:
-- Conclusión de la fase:
+- Conclusión de la etapa:
 
 ## 3. Registro general de endpoints
 
-Se mantendrá un registro de las operaciones implementadas, indicando su método HTTP, ruta, fase de desarrollo y estado de verificación.
+Se mantendrá un registro de las operaciones implementadas, indicando su método HTTP, ruta, etapa de desarrollo y estado de verificación. Las rutas que ya aparecen en la plantilla solo como contrato OpenAPI no se consideran implementadas.
 
-| Método | Endpoint | Fase | Estado |
+| Método | Endpoint | Etapa | Estado |
 |---|---|---|---|
-| POST | `/api/auth/register` | 4 | Pendiente |
-| POST | `/api/auth/login` | 4 | Pendiente |
-| POST | `/api/patients` | 5 | Pendiente |
-| GET | `/api/patients` | 5 | Pendiente |
-| GET | `/api/patients/:id` | 5 | Pendiente |
-| GET | `/api/doctors/me/patients/:patientId` | 5 | Pendiente |
-| GET | `/api/doctors` | 5 | Pendiente |
-| GET | `/api/specialties` | 5 | Pendiente |
+| POST | `/api/auth/register` | 5 | Pendiente |
+| POST | `/api/auth/login` | 5 | Pendiente |
+| POST | `/api/patients` | 6 | Pendiente |
+| GET | `/api/patients` | 6 | Pendiente |
+| GET | `/api/patients/:id` | 6 | Pendiente |
+| GET | `/api/doctors/me/patients/:patientId` | 6 | Pendiente |
+| GET | `/api/doctors` | 6 | Pendiente |
+| GET | `/api/specialties` | 6 | Pendiente |
 | POST | `/api/appointments` | 6 | Pendiente |
 | GET | `/api/doctors/:id/appointments` | 6 | Pendiente |
 | PATCH | `/api/appointments/:id/status` | 6 | Pendiente |
@@ -245,23 +260,27 @@ Se documentarán las decisiones relevantes que surjan durante la implementación
 
 ## 5. Historial de implementación
 
-| Fecha | Fase | Actividad | Resultado |
+| Fecha | Etapa | Actividad | Resultado |
 |---|---|---|---|
-| Por completar | — | Inicio del registro de implementación | Documento creado |
+| No indicada | Preparación | Commit inicial de documentación y planificación `0749d9c chore: estableciendo la documentacion para el plan de trabajo` | Publicado desde `primera-implementacion`; sincronizada con `origin/primera-implementacion` en la última revisión confirmada. No consta PR ni merge. |
+| No indicada | 1 | Incorporación de la validación de `JWT_SECRET` en `env.schema.ts` | Confirmada como cadena obligatoria con longitud mínima de un carácter y sin valor predeterminado. |
+| No indicada | 1 | Ejecución de `pnpm exec tsc --noEmit` | Terminó sin errores de TypeScript; no sustituye `pnpm typecheck` ni las comprobaciones de arranque. |
+
+**Contexto Git confirmado en la última revisión:** repositorio `FUNVAL-pro5-prisma-clinica`, rama `primera-implementacion`, commit inicial publicado `0749d9c chore: estableciendo la documentacion para el plan de trabajo`, sincronizada entonces con `origin/primera-implementacion`. En esa revisión `main` todavía no tenía commits. No hay constancia de Pull Request, merge o cambio de rama; no se infieren de este registro.
 
 ## 6. Estado general del proyecto
 
-Esta sección se actualizará al finalizar cada fase.
+Esta sección se actualizará al finalizar cada etapa.
 
-| Fase | Descripción | Estado |
+| Etapa | Descripción | Estado |
 |---|---|---|
-| 1 | Modelado, migración y seed | Pendiente |
-| 2 | Inicio de la aplicación | Pendiente |
-| 3 | Alta inicial de GERENCIA | Pendiente |
-| 4 | Registro e inicio de sesión | Pendiente |
-| 5 | Funciones principales | Pendiente |
-| 6 | Citas y reportes | Pendiente |
-| 7 | Pruebas y entrega | Pendiente |
+| 1 | Configuración base | Implementada parcialmente: `JWT_SECRET` ya se valida; `pnpm exec tsc --noEmit` terminó sin errores. Pendientes `pnpm install`, `pnpm typecheck`, revisión de `.env`/`.env.example` y validación de entorno durante el arranque; sin verificación integral |
+| 2 | Modelado, migración y seed | Implementado parcialmente; existe el scaffold Prisma y el directorio `prisma/migrations/`, pero faltan modelos, migración inicial y seed; etapa sin verificar |
+| 3 | Servidor, rutas base y errores | Implementado parcialmente; existe código Express con `/health` y Swagger mínimo, pero el arranque del servidor no está verificado; faltan errores, ciclo de Prisma y OpenAPI completo |
+| 4 | Schemas y acceso a datos | Pendiente |
+| 5 | Autenticación y autorización | Pendiente |
+| 6 | Operaciones funcionales | Pendiente |
+| 7 | Pruebas finales y entrega | Pendiente |
 
 ---
 

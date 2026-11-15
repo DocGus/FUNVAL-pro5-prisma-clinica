@@ -36,6 +36,45 @@ export const createUser = (data: RegisterInput, passwordHash: string) =>
       id: true,
       email: true,
       role: true,
-      doctorId: true,
     },
+  });
+
+export const createDoctorUser = (
+  data: Extract<RegisterInput, { role: "MEDICO" }>,
+  passwordHash: string,
+) =>
+  prisma.$transaction(async (transaction) => {
+    const doctor = await transaction.doctor.findUnique({
+      where: { id: data.doctorId },
+      select: { id: true },
+    });
+
+    if (!doctor) {
+      return { status: "DOCTOR_NOT_FOUND" as const };
+    }
+
+    const linkedUser = await transaction.user.findUnique({
+      where: { doctorId: data.doctorId },
+      select: { id: true },
+    });
+
+    if (linkedUser) {
+      return { status: "DOCTOR_ALREADY_LINKED" as const };
+    }
+
+    const user = await transaction.user.create({
+      data: {
+        email: data.email,
+        passwordHash,
+        role: "MEDICO",
+        doctorId: data.doctorId,
+      },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+      },
+    });
+
+    return { status: "CREATED" as const, user };
   });

@@ -1,5 +1,5 @@
-
 import type { ErrorRequestHandler } from "express";
+import { AppError } from "../utils/app-error.js";
 
 export const errorHandler: ErrorRequestHandler = (
   error,
@@ -14,8 +14,20 @@ export const errorHandler: ErrorRequestHandler = (
 
   if (isBadJson) {
     response.status(400).json({
-      status: "error",
-      message: "JSON inválido en la solicitud",
+      error: {
+        code: "VALIDATION_ERROR",
+        message: "JSON inválido en la solicitud.",
+      },
+    });
+    return;
+  }
+
+  if (error instanceof AppError) {
+    response.status(error.statusCode).json({
+      error: {
+        code: error.code,
+        message: error.message,
+      },
     });
     return;
   }
@@ -23,7 +35,9 @@ export const errorHandler: ErrorRequestHandler = (
   console.error(error);
 
   response.status(500).json({
-    status: "error",
-    message: "Error interno del servidor",
+    error: {
+      code: "INTERNAL_ERROR",
+      message: "Error interno del servidor.",
+    },
   });
 };

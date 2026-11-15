@@ -8,8 +8,8 @@
  *
  * IMPORTANTE:
  * Este documento describe las operaciones previstas.
- * No implementa controladores, servicios ni rutas Express.
- * Las rutas funcionales se implementarán en las etapas posteriores.
+ * Documenta el contrato HTTP de las operaciones previstas.
+ * La implementación de cada operación se desarrolla por etapas.
  */
 
 export const openApiDocument = {
@@ -152,21 +152,22 @@ export const openApiDocument = {
       ErrorResponse: {
         type: "object",
         properties: {
-          status: {
-            type: "string",
-            example: "error",
-          },
-          message: {
-            type: "string",
-            example: "Solicitud inválida",
-          },
-          path: {
-            type: "string",
-            description: "Ruta solicitada, cuando corresponda.",
-            example: "/api/patients/abc",
+          error: {
+            type: "object",
+            properties: {
+              code: {
+                type: "string",
+                example: "AUTHENTICATION_ERROR",
+              },
+              message: {
+                type: "string",
+                example: "Se requiere un token de autenticación.",
+              },
+            },
+            required: ["code", "message"],
           },
         },
-        required: ["status", "message"],
+        required: ["error"],
       },
 
       // Roles disponibles en el sistema.

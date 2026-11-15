@@ -2,7 +2,7 @@ import { prisma } from "../config/prisma.js";
 
 export interface AppointmentsBySpecialtyRow {
   specialtyId: string;
-  specialtyName: string;
+  name: string;
   totalAppointments: number;
 }
 
@@ -15,15 +15,13 @@ export const getAppointmentsBySpecialty = () =>
   prisma.$queryRaw<AppointmentsBySpecialtyRow[]>`
     SELECT
       s."id" AS "specialtyId",
-      s."name" AS "specialtyName",
+      s."name" AS "name",
       COUNT(a."id")::int AS "totalAppointments"
     FROM "Specialty" s
-    INNER JOIN "Doctor" d
-      ON d."specialtyId" = s."id"
-    INNER JOIN "Appointment" a
-      ON a."doctorId" = d."id"
+    INNER JOIN "Doctor" d ON d."specialtyId" = s."id"
+    INNER JOIN "Appointment" a ON a."doctorId" = d."id"
     GROUP BY s."id", s."name"
-    ORDER BY s."name" ASC
+    ORDER BY COUNT(a."id") DESC
   `;
 
 export const getDailyCutoff = (date: string) => {
@@ -40,6 +38,5 @@ export const getDailyCutoff = (date: string) => {
       AND a."startAt" < ${end}
       AND a."status" IN ('COMPLETADA', 'CANCELADA')
     GROUP BY a."status"
-    ORDER BY a."status" ASC
   `;
 };

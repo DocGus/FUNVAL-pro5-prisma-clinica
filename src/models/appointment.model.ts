@@ -15,9 +15,7 @@ export const createAppointment = (data: AppointmentCreateInput) =>
     },
     include: {
       patient: true,
-      doctor: {
-        include: { specialty: true },
-      },
+      doctor: { include: { specialty: true } },
     },
   });
 
@@ -26,10 +24,21 @@ export const findAppointmentById = (id: string) =>
     where: { id },
     include: {
       patient: true,
-      doctor: {
-        include: { specialty: true },
-      },
+      doctor: { include: { specialty: true } },
     },
+  });
+
+export const findAppointmentConflict = (
+  patientId: string,
+  doctorId: string,
+  scheduledAt: Date,
+) =>
+  prisma.appointment.findFirst({
+    where: {
+      scheduledAt,
+      OR: [{ patientId }, { doctorId }],
+    },
+    select: { id: true },
   });
 
 export const findAppointmentsByDoctor = (
@@ -41,14 +50,12 @@ export const findAppointmentsByDoctor = (
       doctorId,
       scheduledAt: {
         gte: new Date(interval.from),
-        lte: new Date(interval.to),
+        lt: new Date(interval.to),
       },
     },
     include: {
       patient: true,
-      doctor: {
-        include: { specialty: true },
-      },
+      doctor: { include: { specialty: true } },
     },
     orderBy: { scheduledAt: "asc" },
   });
@@ -62,8 +69,6 @@ export const updateAppointmentStatus = (
     data: { status: data.status },
     include: {
       patient: true,
-      doctor: {
-        include: { specialty: true },
-      },
+      doctor: { include: { specialty: true } },
     },
   });

@@ -1,7 +1,4 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
+// Prisma schema - Clínica Salud Integral
 
 generator client {
   provider = "prisma-client"
@@ -10,4 +7,73 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+enum AppointmentStatus {
+  PROGRAMADA
+  COMPLETADA
+  CANCELADA
+}
+
+enum UserRole {
+  RECEPCIONISTA
+  MEDICO
+  GERENCIA
+}
+
+model Patient {
+  id        String   @id @default(uuid()) @db.Uuid
+  firstName String
+  lastName  String
+  email     String   @unique
+  birthDate DateTime @db.Date
+  phone     String?
+
+  appointments Appointment[]
+}
+
+model Doctor {
+  id                  String  @id @default(uuid()) @db.Uuid
+  firstName           String
+  lastName            String
+  professionalLicense String  @unique
+  email               String?
+  specialtyId         String  @db.Uuid
+
+  specialty    Specialty     @relation(fields: [specialtyId], references: [id])
+  appointments Appointment[]
+  user         User?
+}
+
+model Specialty {
+  id   String @id @default(uuid()) @db.Uuid
+  name String @unique
+
+  doctors Doctor[]
+}
+
+model Appointment {
+  id          String            @id @default(uuid()) @db.Uuid
+  patientId   String            @db.Uuid
+  doctorId    String            @db.Uuid
+  scheduledAt DateTime          @map("startAt") @db.Timestamptz(6)
+  reason      String?
+  status      AppointmentStatus @default(PROGRAMADA)
+
+  patient Patient @relation(fields: [patientId], references: [id])
+  doctor  Doctor  @relation(fields: [doctorId], references: [id])
+
+  @@index([doctorId, scheduledAt])
+  @@index([patientId, scheduledAt])
+  @@index([status, scheduledAt])
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  passwordHash String
+  role         UserRole
+  doctorId     String?  @unique @db.Uuid
+
+  doctor Doctor? @relation(fields: [doctorId], references: [id])
 }

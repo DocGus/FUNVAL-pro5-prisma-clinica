@@ -1,3 +1,5 @@
+import { notFound } from "./middlewares/not-found.middleware.js";
+import { errorHandler } from "./middlewares/error-handler.middleware.js";
 import cors from "cors";
 import express, { type Express } from "express";
 import swaggerUi from "swagger-ui-express";
@@ -32,3 +34,6 @@ app.get("/health", (_request, response) => {
 });
 
 app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(apiDocument));
+
+app.use(notFound);
+app.use(errorHandler);

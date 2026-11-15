@@ -82,4 +82,4 @@ Para cada módulo, crea una rama desde `main`, realiza commits pequeños con el 
 
 El proyecto usa Prisma ORM 7.10.1 y el archivo de configuración `prisma7.config.ts`. Ejecuta los comandos de Prisma desde la raíz del proyecto.
 
-Los modelos Prisma usan nombres singulares (`Patient`, `Doctor`, `Specialty`, `Appointment`, `User`) y se mapean con `@@map` a tablas PostgreSQL plurales (`patients`, `doctors`, `specialties`, `appointments`, `users`). Esta convención no cambia las rutas API ni el modelo de datos.
+Prisma usa los modelos/tablas PostgreSQL `Patient`, `Doctor`, `Specialty`, `Appointment` y `User`. Las columnas conservan camelCase, salvo `Appointment.scheduledAt`, que se guarda en `Appointment.startAt` mediante `@map("startAt")`. Todos los IDs y claves foráneas son UUID. `Patient.birthDate` es `DATE`; `Appointment.scheduledAt` es `TIMESTAMPTZ(6)`.

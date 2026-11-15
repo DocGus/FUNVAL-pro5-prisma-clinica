@@ -82,32 +82,32 @@ export const openApiDocument = {
         name: "id",
         in: "path",
         required: true,
-        description: "Identificador entero positivo del paciente.",
-        schema: { type: "integer", minimum: 1 },
+        description: "Identificador UUID del paciente.",
+        schema: { type: "string", format: "uuid", example: "550e8400-e29b-41d4-a716-446655440001" },
       },
 
       DoctorId: {
         name: "id",
         in: "path",
         required: true,
-        description: "Identificador entero positivo del médico.",
-        schema: { type: "integer", minimum: 1 },
+        description: "Identificador UUID del médico.",
+        schema: { type: "string", format: "uuid", example: "550e8400-e29b-41d4-a716-446655440002" },
       },
 
       PatientIdForDoctor: {
         name: "patientId",
         in: "path",
         required: true,
-        description: "Identificador entero positivo del paciente.",
-        schema: { type: "integer", minimum: 1 },
+        description: "Identificador UUID del paciente.",
+        schema: { type: "string", format: "uuid", example: "550e8400-e29b-41d4-a716-446655440001" },
       },
 
       AppointmentId: {
         name: "id",
         in: "path",
         required: true,
-        description: "Identificador entero positivo de la cita.",
-        schema: { type: "integer", minimum: 1 },
+        description: "Identificador UUID de la cita.",
+        schema: { type: "string", format: "uuid", example: "550e8400-e29b-41d4-a716-446655440004" },
       },
 
       SpecialtyId: {
@@ -115,7 +115,7 @@ export const openApiDocument = {
         in: "query",
         required: false,
         description: "Filtra el directorio por especialidad.",
-        schema: { type: "integer", minimum: 1 },
+        schema: { type: "string", format: "uuid", example: "550e8400-e29b-41d4-a716-446655440003" },
       },
 
       FromDateTime: {
@@ -203,9 +203,9 @@ export const openApiDocument = {
           password: { type: "string", minLength: 8, example: "contraseña123" },
           role: { type: "string", enum: ["MEDICO"] },
           doctorId: {
-            type: "integer",
-            minimum: 1,
-            example: 2,
+            type: "string",
+            format: "uuid",
+            example: "550e8400-e29b-41d4-a716-446655440002",
             description: "Debe identificar un médico existente sin cuenta vinculada.",
           },
         },
@@ -225,7 +225,7 @@ export const openApiDocument = {
       RegisterResponse: {
         type: "object",
         properties: {
-          id: { type: "integer", example: 1 },
+          id: { type: "string", format: "uuid", example: "550e8400-e29b-41d4-a716-446655440005" },
           email: { type: "string", format: "email", example: "recepcion@clinica.test" },
           role: { $ref: "#/components/schemas/UserRole" },
         },
@@ -265,8 +265,8 @@ export const openApiDocument = {
           email: { type: "string", format: "email", example: "ana@clinica.test" },
           birthDate: {
             type: "string",
-            format: "date-time",
-            example: "1990-05-10T00:00:00.000Z",
+            format: "date",
+            example: "1986-05-20",
           },
         },
         required: ["firstName", "lastName", "email", "birthDate"],
@@ -275,11 +275,11 @@ export const openApiDocument = {
       PatientResponse: {
         type: "object",
         properties: {
-          id: { type: "integer", example: 1 },
+          id: { type: "string", format: "uuid", example: "550e8400-e29b-41d4-a716-446655440001" },
           firstName: { type: "string", example: "Ana" },
           lastName: { type: "string", example: "Pérez" },
           email: { type: "string", format: "email", example: "ana@clinica.test" },
-          birthDate: { type: "string", format: "date-time" },
+          birthDate: { type: "string", format: "date", example: "1986-05-20" },
         },
         required: ["id", "firstName", "lastName", "email", "birthDate"],
       },
@@ -287,20 +287,20 @@ export const openApiDocument = {
       PatientAppointment: {
         type: "object",
         properties: {
-          id: { type: "integer", example: 1 },
+          id: { type: "string", format: "uuid", example: "550e8400-e29b-41d4-a716-446655440004" },
           scheduledAt: { type: "string", format: "date-time" },
           reason: { type: "string", nullable: true, example: "Consulta" },
           status: { $ref: "#/components/schemas/AppointmentStatus" },
           doctor: {
             type: "object",
             properties: {
-              id: { type: "integer", example: 2 },
+              id: { type: "string", format: "uuid", example: "550e8400-e29b-41d4-a716-446655440002" },
               firstName: { type: "string", example: "Luis" },
               lastName: { type: "string", example: "García" },
               specialty: {
                 type: "object",
                 properties: {
-                  id: { type: "integer", example: 1 },
+                  id: { type: "string", format: "uuid", example: "550e8400-e29b-41d4-a716-446655440003" },
                   name: { type: "string", example: "Cardiología" },
                 },
                 required: ["id", "name"],
@@ -335,10 +335,10 @@ export const openApiDocument = {
       DoctorResponse: {
         type: "object",
         properties: {
-          id: { type: "integer", example: 2 },
+          id: { type: "string", format: "uuid", example: "550e8400-e29b-41d4-a716-446655440002" },
           firstName: { type: "string", example: "Luis" },
           lastName: { type: "string", example: "García" },
-          specialtyId: { type: "integer", example: 1 },
+          specialtyId: { type: "string", format: "uuid", example: "550e8400-e29b-41d4-a716-446655440003" },
         },
         required: ["id", "firstName", "lastName", "specialtyId"],
       },
@@ -346,7 +346,7 @@ export const openApiDocument = {
       SpecialtyResponse: {
         type: "object",
         properties: {
-          id: { type: "integer", example: 1 },
+          id: { type: "string", format: "uuid", example: "550e8400-e29b-41d4-a716-446655440003" },
           name: { type: "string", example: "Cardiología" },
         },
         required: ["id", "name"],
@@ -355,7 +355,7 @@ export const openApiDocument = {
       DoctorPatientAppointment: {
         type: "object",
         properties: {
-          id: { type: "integer", example: 1 },
+          id: { type: "string", format: "uuid", example: "550e8400-e29b-41d4-a716-446655440004" },
           scheduledAt: { type: "string", format: "date-time" },
           reason: { type: "string", nullable: true, example: "Consulta" },
           status: { $ref: "#/components/schemas/AppointmentStatus" },
@@ -366,10 +366,10 @@ export const openApiDocument = {
       DoctorPatientResponse: {
         type: "object",
         properties: {
-          id: { type: "integer", example: 1 },
+          id: { type: "string", format: "uuid", example: "550e8400-e29b-41d4-a716-446655440001" },
           firstName: { type: "string", example: "Ana" },
           lastName: { type: "string", example: "Pérez" },
-          birthDate: { type: "string", format: "date-time" },
+          birthDate: { type: "string", format: "date", example: "1986-05-20" },
           appointments: {
             type: "array",
             items: { $ref: "#/components/schemas/DoctorPatientAppointment" },
@@ -385,8 +385,8 @@ export const openApiDocument = {
       AppointmentCreateRequest: {
         type: "object",
         properties: {
-          patientId: { type: "integer", minimum: 1, example: 1 },
-          doctorId: { type: "integer", minimum: 1, example: 2 },
+          patientId: { type: "string", format: "uuid", example: "550e8400-e29b-41d4-a716-446655440001" },
+          doctorId: { type: "string", format: "uuid", example: "550e8400-e29b-41d4-a716-446655440002" },
           scheduledAt: {
             type: "string",
             format: "date-time",
@@ -401,9 +401,9 @@ export const openApiDocument = {
       AppointmentResponse: {
         type: "object",
         properties: {
-          id: { type: "integer", example: 1 },
-          patientId: { type: "integer", example: 1 },
-          doctorId: { type: "integer", example: 2 },
+          id: { type: "string", format: "uuid", example: "550e8400-e29b-41d4-a716-446655440004" },
+          patientId: { type: "string", format: "uuid", example: "550e8400-e29b-41d4-a716-446655440001" },
+          doctorId: { type: "string", format: "uuid", example: "550e8400-e29b-41d4-a716-446655440002" },
           scheduledAt: { type: "string", format: "date-time" },
           reason: { type: "string", nullable: true, example: "Consulta" },
           status: { $ref: "#/components/schemas/AppointmentStatus" },
@@ -429,7 +429,7 @@ export const openApiDocument = {
       AppointmentsBySpecialtyResponse: {
         type: "object",
         properties: {
-          specialtyId: { type: "integer", example: 1 },
+          specialtyId: { type: "string", format: "uuid", example: "550e8400-e29b-41d4-a716-446655440003" },
           name: { type: "string", example: "Cardiología" },
           totalAppointments: { type: "integer", example: 5 },
         },

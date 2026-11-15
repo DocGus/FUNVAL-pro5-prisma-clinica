@@ -126,48 +126,46 @@ enum EstadoEjemplo {
 }
 
 model Autor {
-  id     Int     @id @default(autoincrement())
+  id     String  @id @default(uuid()) @db.Uuid
   nombre String
   libros Libro[]
 
-  @@map("autores")
 }
 
 model Libro {
-  id      Int    @id @default(autoincrement())
+  id      String @id @default(uuid()) @db.Uuid
   titulo  String
   autor   Autor  @relation(fields: [autorId], references: [id])
-  autorId Int    @map("autor_id")
+  autorId String @db.Uuid
 
-  @@map("libros")
 }
-@id @default(autoincrement()) — llave primaria autoincremental
-@map("columna") / @@map("tabla") — nombre real en PostgreSQL en snake_case, aunque el campo en Prisma esté en camelCase
+En este proyecto, las PK/FK usan `String @db.Uuid` con `@default(uuid())`.
+@map("columna") / @@map("tabla") renombran el nombre en PostgreSQL; no agregues mapeos al esquema del proyecto salvo decisión aprobada (el mapeo actual es `scheduledAt` → `startAt`).
 @relation(fields: [...], references: [...]) — cómo se conecta una fila con otra
 enum — restringe un campo a un conjunto fijo de valores, algo más estricto que un String cualquiera
 Tu schema debe cumplir, como mínimo, con lo que ya definiste en tu requerimientos.md, más estos requisitos técnicos:
 
 Toda relación N:1 que identificaste debe existir como tal en Prisma (con su @relation)
 El estado de la cita se restringe con un enum a los tres valores que ya definió el cliente: PROGRAMADA, COMPLETADA, CANCELADA
-Todas las tablas mapeadas a snake_case con @map/@@map
+**Requerimiento académico FUNVAL:** todas las tablas mapeadas a snake_case con @map/@@map. **Estado en este proyecto:** la migración existente conserva nombres de modelo y columnas camelCase, salvo `Appointment.startAt`; el requisito externo queda pendiente de confirmación y no se afirma como satisfecho.
 Además de las entidades que tú definiste, agrega el modelo User — este sí te lo damos completo, porque el miércoles vas a copiar un kit de autenticación ya armado que depende exactamente de estos nombres de campo:
 
-enum Role {
+enum UserRole {
   RECEPCIONISTA
   MEDICO
   GERENCIA
 }
 
 model User {
-  id           Int      @id @default(autoincrement())
+  id           String   @id @default(uuid()) @db.Uuid
   email        String   @unique
-  password String
-  role         Role
+  passwordHash String
+  role         UserRole
   
-  # puedes agregar mas campos para adaptar a tu modelo, como nombre, apellido, etc.
-  @@map("users")
+  doctorId     String?  @unique @db.Uuid
+  doctor       Doctor?  @relation(fields: [doctorId], references: [id])
 }
-Defínelo hoy para no tener que migrar de nuevo esa tabla a mitad de semana.
+En `Doctor`, la relación inversa es `user User?`. Este ejemplo refleja los nombres del esquema actual; `passwordHash` almacena el hash, nunca la contraseña en texto plano.
 
 Ejecuta la migración:
 
@@ -300,7 +298,7 @@ El caso de negocio pide que, al consultar a un paciente, se vea en una sola vist
 
 Actualiza getPatientById en src/models/patient.model.ts:
 
-export function getPatientById(id: number) {
+export function getPatientById(id: string) {
   return prisma.patient.findUnique({
     where: { id },
     include: {
@@ -331,7 +329,7 @@ import { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
 
 export interface AuthPayload {
-  id: number
+  id: string
   email: string
   role: 'RECEPCIONISTA' | 'MEDICO' | 'GERENCIA'
 }
@@ -384,7 +382,7 @@ export async function register(req: Request, res: Response) {
     const hashedPassword = await bcrypt.hash(password, 10)
 
     const user = await prisma.user.create({
-      data: { email, password: hashedPassword, role },
+      data: { email, passwordHash: hashedPassword, role },
       select: { id: true, email: true, role: true }
     })
 
@@ -399,7 +397,7 @@ export async function login(req: Request, res: Response) {
     const { email, password } = req.body
     const user = await prisma.user.findUnique({ where: { email } })
 
-    if (!user || !(await bcrypt.compare(password, user.password))) {
+    if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
       return res.status(401).json({ message: 'Credenciales inválidas' })
     }
 
@@ -469,8 +467,8 @@ La regla de negocio es explícita: no se puede agendar una cita en una fecha que
 import { z } from 'zod'
 
 export const appointmentSchema = z.object({
-  patientId: z.number().int().positive(),
-  doctorId: z.number().int().positive(),
+  patientId: z.string().uuid(),
+  doctorId: z.string().uuid(),
   scheduledAt: z.coerce.date().min(new Date(), 'No puedes agendar una cita en una fecha que ya pasó'),
   reason: z.string().optional()
 })
@@ -489,7 +487,7 @@ A diferencia de la agenda del médico y el cambio de estado (Partes 2 y 3), el b
 Parte 2 — Agenda del médico por rango de fechas (≈ 2 horas)
 Los médicos necesitan ver qué pacientes tienen programados entre dos fechas. Agrega a appointment.model.ts:
 
-export function getDoctorAgenda(doctorId: number, from?: Date, to?: Date) {
+export function getDoctorAgenda(doctorId: string, from?: Date, to?: Date) {
   return prisma.tuModeloCita.findMany({
     where: {
       doctorId,
@@ -515,7 +513,7 @@ export const appointmentStatusSchema = z.object({
 })
 En el Modelo:
 
-export function updateAppointmentStatus(id: number, status: 'COMPLETADA' | 'CANCELADA') {
+export function updateAppointmentStatus(id: string, status: 'COMPLETADA' | 'CANCELADA') {
   return prisma.tuModeloCita.update({
     where: { id },
     data: { status }
@@ -556,18 +554,18 @@ Gerencia necesita el volumen de citas agendadas, agrupado por especialidad médi
 export function getAppointmentsBySpecialty() {
   return prisma.$queryRaw`
     SELECT s.name AS specialty, COUNT(a.id)::int AS total_appointments
-    FROM appointments a
-    INNER JOIN doctors d ON d.id = a.doctor_id
-    INNER JOIN specialties s ON s.id = d.specialty_id
-    GROUP BY s.name
+    FROM "Appointment" a
+    INNER JOIN "Doctor" d ON d.id = a."doctorId"
+    INNER JOIN "Specialty" s ON s.id = d."specialtyId"
+    GROUP BY s.id, s.name
     ORDER BY total_appointments DESC
   `
 }
-Los nombres de tabla y columna (appointments, doctor_id, specialty_id, s.name) son los del ejemplo — reemplázalos por los que tú definiste con @map/@@map el lunes. Si no los recuerdas, revísalos en pgAdmin o con \d nombre_tabla en psql.
+Los nombres de tabla y columna siguen la migración actual: tablas entrecomilladas `"Appointment"`, `"Doctor"` y `"Specialty"`, con campos camelCase. La columna física para `Appointment.scheduledAt` es `"startAt"`.
 
 Aunque aquí no hay valores dinámicos, si más adelante agregas un filtro (por ejemplo, un rango de fechas), interpólalo directamente en el template — Prisma lo parametriza automáticamente, nunca concatenes el string a mano:
 
-prisma.$queryRaw`... WHERE a.scheduled_at >= ${from} ...`
+prisma.$queryRaw`... WHERE a."startAt" >= ${from} ...`
 Endpoint:
 
 Método	Ruta	Descripción
@@ -620,7 +618,7 @@ Hoy protegiste /api/doctors/:id/appointments para que solo entren usuarios con r
 
 Investiga y resuelve:
 
-Agrega una relación opcional entre User y Doctor en tu schema (doctorId Int? en User, o el enfoque que prefieras) para saber a qué médico corresponde cada cuenta.
+El esquema de este proyecto ya define la relación opcional entre User y Doctor con `User.doctorId String? @unique @db.Uuid` y su relación inversa `Doctor.user`.
 En el Controlador de getDoctorAgenda, compara el :id de la URL contra req.user. Si un usuario con rol MEDICO intenta consultar la agenda de otro médico, responde 403 Forbidden — aunque su rol sea correcto, el recurso no le pertenece.
 Aplica la misma lógica de “ownership” al endpoint de cambio de estado (PATCH /api/appointments/:id/status): un médico solo debería poder actualizar citas que son suyas.
 Esta es la diferencia entre autenticación (¿quién eres?), autorización por rol (¿qué tipo de usuario eres?) y autorización por pertenencia (¿es tuyo este recurso específico?). Las tres capas conviven en la mayoría de APIs reales.

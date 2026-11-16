@@ -470,7 +470,11 @@ describe("citas, agenda y transiciones", () => {
   it.each(["COMPLETADA", "CANCELADA"] as const)(
     "permite la transición PROGRAMADA → %s en una cita propia",
     async (status) => {
-      vi.mocked(findUserById).mockResolvedValueOnce({ id: "doctor-user", doctorId } as never);
+      vi.mocked(findUserById).mockResolvedValueOnce({
+        id: "doctor-user",
+        role: "MEDICO",
+        doctorId,
+      } as never);
       vi.mocked(findAppointmentById).mockResolvedValueOnce(
         scheduledAppointment as never,
       );
@@ -489,7 +493,11 @@ describe("citas, agenda y transiciones", () => {
   );
 
   it("rechaza estados finales, citas ajenas, inexistentes e identificadores/cuerpos inválidos", async () => {
-    vi.mocked(findUserById).mockResolvedValue({ id: "doctor-user", doctorId } as never);
+    vi.mocked(findUserById).mockResolvedValue({
+      id: "doctor-user",
+      role: "MEDICO",
+      doctorId,
+    } as never);
     vi.mocked(findAppointmentById).mockResolvedValue({
       ...scheduledAppointment,
       status: "COMPLETADA",
@@ -527,9 +535,102 @@ describe("citas, agenda y transiciones", () => {
       .set("Authorization", auth("MEDICO", "doctor-user"))
       .send({ status: "COMPLETADA" })
       .expect(400);
+
+    vi.mocked(findUserById).mockResolvedValueOnce({
+      id: "reception-user",
+      role: "RECEPCIONISTA",
+      doctorId: null,
+    } as never);
+    vi.mocked(findAppointmentById).mockResolvedValueOnce(
+      scheduledAppointment as never,
+    );
     await request(app)
       .patch(`/api/appointments/${appointmentId}/status`)
-      .set("Authorization", auth("RECEPCIONISTA"))
+      .set("Authorization", auth("RECEPCIONISTA", "reception-user"))
+      .send({ status: "COMPLETADA" })
+      .expect(200);
+  });
+
+  it.each(["COMPLETADA", "CANCELADA"] as const)(
+    "permite a RECEPCIONISTA cambiar PROGRAMADA a %s",
+    async (status) => {
+      vi.mocked(findUserById).mockResolvedValueOnce({
+        id: "reception-user",
+        role: "RECEPCIONISTA",
+        doctorId: null,
+      } as never);
+      vi.mocked(findAppointmentById).mockResolvedValueOnce(
+        scheduledAppointment as never,
+      );
+      vi.mocked(updateAppointmentStatus).mockResolvedValueOnce({
+        ...scheduledAppointment,
+        status,
+      } as never);
+
+      const response = await request(app)
+        .patch(`/api/appointments/${appointmentId}/status`)
+        .set("Authorization", auth("RECEPCIONISTA", "reception-user"))
+        .send({ status })
+        .expect(200);
+
+      expect(response.body.status).toBe(status);
+    },
+  );
+
+  it("permite a RECEPCIONISTA actualizar una cita de otro médico", async () => {
+    vi.mocked(findUserById).mockResolvedValueOnce({
+      id: "reception-user",
+      role: "RECEPCIONISTA",
+      doctorId: null,
+    } as never);
+    vi.mocked(findAppointmentById).mockResolvedValueOnce({
+      ...scheduledAppointment,
+      doctorId: otherDoctorId,
+    } as never);
+
+    const response = await request(app)
+      .patch(`/api/appointments/${appointmentId}/status`)
+      .set("Authorization", auth("RECEPCIONISTA", "reception-user"))
+      .send({ status: "COMPLETADA" })
+      .expect(200);
+
+    expect(response.body.status).toBe("COMPLETADA");
+    expect(updateAppointmentStatus).toHaveBeenCalledWith(
+      appointmentId,
+      { status: "COMPLETADA" },
+    );
+  });
+
+  it.each([
+    ["COMPLETADA", "CANCELADA"],
+    ["CANCELADA", "COMPLETADA"],
+  ] as const)(
+    "rechaza a RECEPCIONISTA modificar una cita finalizada (%s)",
+    async (finalStatus, requestedStatus) => {
+      vi.mocked(findUserById).mockResolvedValueOnce({
+        id: "reception-user",
+        role: "RECEPCIONISTA",
+        doctorId: null,
+      } as never);
+      vi.mocked(findAppointmentById).mockResolvedValueOnce({
+        ...scheduledAppointment,
+        status: finalStatus,
+      } as never);
+
+      await request(app)
+        .patch(`/api/appointments/${appointmentId}/status`)
+        .set("Authorization", auth("RECEPCIONISTA", "reception-user"))
+        .send({ status: requestedStatus })
+        .expect(409);
+
+      expect(updateAppointmentStatus).not.toHaveBeenCalled();
+    },
+  );
+
+  it("rechaza a GERENCIA al intentar actualizar el estado de una cita", async () => {
+    await request(app)
+      .patch(`/api/appointments/${appointmentId}/status`)
+      .set("Authorization", auth("GERENCIA"))
       .send({ status: "COMPLETADA" })
       .expect(403);
   });

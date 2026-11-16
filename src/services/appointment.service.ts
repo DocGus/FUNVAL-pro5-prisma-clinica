@@ -106,7 +106,13 @@ export const changeAppointmentStatus = async (
     );
   }
 
-  if (!user?.doctorId || appointment.doctorId !== user.doctorId) {
+  const canModifyAppointment =
+    user?.role === "RECEPCIONISTA" ||
+    (user?.role === "MEDICO" &&
+      Boolean(user.doctorId) &&
+      appointment.doctorId === user.doctorId);
+
+  if (!canModifyAppointment) {
     throw new AppError(
       403,
       "FORBIDDEN",

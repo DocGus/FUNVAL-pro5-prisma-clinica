@@ -19,6 +19,6 @@ appointmentRouter.post(
 appointmentRouter.patch(
   "/:id/status",
   authenticate,
-  authorizeRoles("MEDICO"),
+  authorizeRoles("MEDICO", "RECEPCIONISTA"),
   updateAppointmentStatusController,
 );

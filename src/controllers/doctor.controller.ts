@@ -7,10 +7,13 @@ import {
 } from "../services/doctor.service.js";
 
 export const listDoctorsController: RequestHandler = async (
-  request,
+  _request,
   response,
 ) => {
-  const doctors = await listDoctors(request.query as never);
+  const doctors = await listDoctors(
+    response.locals.doctorFilter,
+  );
+
   response.status(200).json(doctors);
 };
 
@@ -19,6 +22,7 @@ export const listSpecialtiesController: RequestHandler = async (
   response,
 ) => {
   const specialties = await listSpecialties();
+
   response.status(200).json(specialties);
 };
 

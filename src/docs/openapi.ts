@@ -339,9 +339,12 @@ export const openApiDocument = {
           id: { type: "string", format: "uuid", example: "550e8400-e29b-41d4-a716-446655440002" },
           firstName: { type: "string", example: "Luis" },
           lastName: { type: "string", example: "García" },
+          professionalLicense: { type: "string", example: "CED-123456" },
+          email: { type: "string", format: "email", nullable: true, example: "luis.garcia@clinica.test" },
           specialtyId: { type: "string", format: "uuid", example: "550e8400-e29b-41d4-a716-446655440003" },
+          specialty: { $ref: "#/components/schemas/SpecialtyResponse" },
         },
-        required: ["id", "firstName", "lastName", "specialtyId"],
+        required: ["id", "firstName", "lastName", "professionalLicense", "specialtyId", "specialty"],
       },
 
       SpecialtyResponse: {

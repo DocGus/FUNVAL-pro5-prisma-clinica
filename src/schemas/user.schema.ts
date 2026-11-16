@@ -3,13 +3,13 @@ import { z } from "zod";
 import { uuidSchema } from "./common.schema.js";
 
 export const registerReceptionistSchema = z.object({
-  email: z.email(),
+  email: z.string().trim().toLowerCase().pipe(z.email()),
   password: z.string().min(8),
   role: z.literal("RECEPCIONISTA"),
 });
 
 export const registerDoctorSchema = z.object({
-  email: z.email(),
+  email: z.string().trim().toLowerCase().pipe(z.email()),
   password: z.string().min(8),
   role: z.literal("MEDICO"),
   doctorId: uuidSchema,
@@ -21,7 +21,7 @@ export const registerSchema = z.discriminatedUnion("role", [
 ]);
 
 export const loginSchema = z.object({
-  email: z.email(),
+  email: z.string().trim().toLowerCase().pipe(z.email()),
   password: z.string().min(1),
 });
 
